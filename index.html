@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SYSTEM_OVERRIDE // ACCESS PORTAL</title>
+    <!-- External CSS Linked -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- Background Matrix Canvas Animation -->
+    <canvas id="matrixCanvas"></canvas>
+
+    <!-- Main Container -->
+    <div class="terminal-card">
+        <div class="terminal-header">
+            <span class="dot red"></span>
+            <span class="dot yellow"></span>
+            <span class="dot green"></span>
+            <span class="terminal-title">ROOT_ACCESS://SECURE_NODE_89</span>
+        </div>
+
+        <div id="formSection" class="terminal-body">
+            <h1 class="glitch-text" data-text="SYSTEM INTERCEPTED">SYSTEM INTERCEPTED</h1>
+            <p class="subtitle">[!] Unauthorized device scan detected. Identity verification required to proceed.</p>
+
+            <div class="input-group">
+                <label for="studentName">> ENTER_TARGET_NAME:</label>
+                <input type="text" id="studentName" placeholder="Type your name..." autocomplete="off" required>
+            </div>
+
+            <div class="input-group">
+                <label for="studentClass">> ENTER_CLASS_SECTION:</label>
+                <input type="text" id="studentClass" placeholder="e.g. 10th-A" autocomplete="off" required>
+            </div>
+
+            <button class="hack-btn" onclick="submitData()">
+                <span class="btn-text">INITIALIZE_CONNECT [>]</span>
+            </button>
+        </div>
+
+        <!-- Warning Display (Triggers after submit) -->
+        <div id="warning" class="warning-section">
+            <div class="skull-icon">☠️</div>
+            <h1 class="hacked-title">SYSTEM COMPROMISED</h1>
+            <p class="hacked-sub">Your device metadata & identity have been broadcasted to the primary terminal screen!</p>
+            
+            <div class="terminal-logs">
+                <p>> Status: <span class="text-red">DATA_EXFILTRATED</span></p>
+                <p>> Location: <span class="text-green">LOCAL_HALL_PROJECTOR</span></p>
+                <p>> Threat Level: <span class="text-red">CRITICAL (100%)</span></p>
+            </div>
+
+            <div class="edu-box">
+                <p class="edu-title">⚠️ CYBER SAFETY DEMONSTRATION</p>
+                <p class="edu-text">Relax! Aapka device safe hai. Ye sirf ek awareness demonstration hai. Kisi bhi unknown QR code ko scan karna aapke data ke liye khatarnak ho sakta hai!</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase Libraries -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+    <!-- External JS Linked -->
+    <script src="app.js"></script>
+
+    <!-- Matrix Animation Inline Script -->
+    <script>
+        const canvas = document.getElementById('matrixCanvas');
+        const ctx = canvas.getContext('2d');
+
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        const katakana = 'アァカサタナハマヤャラワガザダバパイィキシチニヒミリヰギジヂビピウゥクスツヌフムユュルグズブヅプエェケセテネヘメレヱゲゼデベペオォコソトノホモヨョロヲゴゾドボポヴッン';
+        const latin = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%&*';
+        const alphabet = katakana + latin;
+
+        const fontSize = 16;
+        const columns = canvas.width / fontSize;
+        const rainDrops = Array.from({ length: columns }).fill(1);
+
+        function drawMatrix() {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.fillStyle = '#0F0';
+            ctx.font = fontSize + 'px monospace';
+
+            for (let i = 0; i < rainDrops.length; i++) {
+                const text = alphabet.charAt(Math.floor(Math.random() * alphabet.length));
+                ctx.fillText(text, i * fontSize, rainDrops[i] * fontSize);
+
+                if (rainDrops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+                    rainDrops[i] = 0;
+                }
+                rainDrops[i]++;
+            }
+        }
+
+        setInterval(drawMatrix, 30);
+
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+    </script>
+</body>
+</html>

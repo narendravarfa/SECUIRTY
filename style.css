@@ -1,0 +1,264 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background-color: #000;
+    color: #00ff66;
+    font-family: 'Courier New', Courier, monospace;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    overflow-x: hidden;
+}
+
+/* Background Matrix Canvas */
+#matrixCanvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+    opacity: 0.8;
+}
+
+/* Terminal Card UI */
+.terminal-card {
+    position: relative;
+    z-index: 2;
+    background: rgba(10, 15, 10, 0.92);
+    border: 1px solid #00ff66;
+    border-radius: 8px;
+    box-shadow: 0 0 20px rgba(0, 255, 102, 0.3);
+    width: 100%;
+    max-width: 450px;
+    overflow: hidden;
+}
+
+.terminal-header {
+    background: #0d160e;
+    padding: 10px 15px;
+    border-bottom: 1px solid #00ff66;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+}
+.dot.red { background: #ff3b30; }
+.dot.yellow { background: #ffcc00; }
+.dot.green { background: #28cd41; }
+
+.terminal-title {
+    font-size: 11px;
+    color: #00ff66;
+    margin-left: 10px;
+    letter-spacing: 1px;
+}
+
+.terminal-body {
+    padding: 25px 20px;
+}
+
+/* Glitch Text & Headings */
+.glitch-text {
+    font-size: 22px;
+    font-weight: bold;
+    color: #00ff66;
+    text-shadow: 0 0 8px #00ff66;
+    margin-bottom: 8px;
+}
+
+.subtitle {
+    color: #a8caa8;
+    font-size: 12px;
+    margin-bottom: 20px;
+    line-height: 1.4;
+}
+
+/* Inputs & Buttons */
+.input-group {
+    margin-bottom: 15px;
+    text-align: left;
+}
+
+.input-group label {
+    display: block;
+    font-size: 12px;
+    margin-bottom: 5px;
+    color: #00ff66;
+}
+
+input {
+    width: 100%;
+    padding: 12px;
+    background: #050a05;
+    border: 1px solid #00ff66;
+    color: #ffffff;
+    font-family: inherit;
+    font-size: 14px;
+    border-radius: 4px;
+    outline: none;
+    box-shadow: inset 0 0 5px rgba(0, 255, 102, 0.2);
+}
+
+input:focus {
+    box-shadow: 0 0 10px rgba(0, 255, 102, 0.6);
+}
+
+.hack-btn {
+    width: 100%;
+    padding: 14px;
+    background: #00ff66;
+    color: #000;
+    border: none;
+    font-family: inherit;
+    font-weight: bold;
+    font-size: 15px;
+    cursor: pointer;
+    border-radius: 4px;
+    margin-top: 10px;
+    box-shadow: 0 0 15px rgba(0, 255, 102, 0.5);
+    transition: all 0.2s ease;
+}
+
+.hack-btn:hover {
+    background: #00cc52;
+    box-shadow: 0 0 25px rgba(0, 255, 102, 0.8);
+}
+
+/* Warning & Hacked Display */
+.warning-section {
+    display: none;
+    padding: 25px 20px;
+    text-align: center;
+    background: rgba(30, 0, 0, 0.85);
+    animation: pulseRed 1.5s infinite alternate;
+}
+
+.skull-icon {
+    font-size: 45px;
+    margin-bottom: 5px;
+}
+
+.hacked-title {
+    color: #ff003c;
+    font-size: 24px;
+    text-shadow: 0 0 10px #ff003c;
+    margin-bottom: 8px;
+}
+
+.hacked-sub {
+    color: #ff8888;
+    font-size: 13px;
+    margin-bottom: 15px;
+}
+
+.terminal-logs {
+    background: #110000;
+    border: 1px dashed #ff003c;
+    padding: 10px;
+    text-align: left;
+    font-size: 12px;
+    margin-bottom: 15px;
+}
+
+.text-red { color: #ff003c; font-weight: bold; }
+.text-green { color: #00ff66; }
+
+.edu-box {
+    background: rgba(255, 204, 0, 0.1);
+    border: 1px solid #ffcc00;
+    padding: 12px;
+    border-radius: 4px;
+    text-align: left;
+}
+
+.edu-title {
+    color: #ffcc00;
+    font-size: 12px;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.edu-text {
+    color: #e6e6e6;
+    font-size: 11px;
+    line-height: 1.4;
+}
+
+/* Projector Dashboard Specifics */
+.dashboard-body {
+    background: #050505;
+    padding: 20px;
+    display: block;
+}
+
+.dashboard-title {
+    text-align: center;
+    color: #ff003c;
+    font-size: 28px;
+    text-shadow: 0 0 15px #ff003c;
+    margin-bottom: 10px;
+    letter-spacing: 2px;
+}
+
+.dashboard-sub {
+    text-align: center;
+    color: #888;
+    font-size: 13px;
+    margin-bottom: 25px;
+}
+
+#logsContainer {
+    display: flex;
+    flex-direction: column-reverse;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.log-card {
+    background: #0d0000;
+    border-left: 5px solid #ff003c;
+    border-right: 1px solid #330000;
+    border-top: 1px solid #330000;
+    border-bottom: 1px solid #330000;
+    padding: 15px 20px;
+    margin: 10px 0;
+    border-radius: 4px;
+    box-shadow: 0 0 15px rgba(255, 0, 60, 0.3);
+    animation: popIn 0.3s ease-out;
+}
+
+.log-title {
+    font-size: 20px;
+    color: #ffffff;
+    font-weight: bold;
+}
+
+.log-details {
+    font-size: 14px;
+    color: #ff4d4d;
+    margin-top: 5px;
+}
+
+/* Keyframe Animations */
+@keyframes popIn {
+    0% { transform: scale(0.8); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes pulseRed {
+    0% { box-shadow: inset 0 0 10px rgba(255, 0, 60, 0.2); }
+    100% { box-shadow: inset 0 0 25px rgba(255, 0, 60, 0.6); }
+}
